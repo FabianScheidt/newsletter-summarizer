@@ -1,0 +1,10 @@
+[project]
+name = "newsletter-summarizer"
+version = "0.1.0"
+description = "Fetches articles from a newsletter and adds a summary to each of them"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "httpx>=0.28.1",
+]

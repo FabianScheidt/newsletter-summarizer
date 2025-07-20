@@ -1,0 +1,81 @@
+{
+    "Records": [
+        {
+            "eventSource": "aws:ses",
+            "eventVersion": "1.0",
+            "ses": {
+                "mail": {
+                    "timestamp": "2025-07-13T15:04:28.356Z",
+                    "messageId": "sample",
+                    "destination": [
+                        "someone@example.com"
+                    ],
+                    "headersTruncated": false,
+                    "headers": [
+                        {
+                            "name": "To",
+                            "value": "Someone <someone@example.com>"
+                        },
+                        {
+                            "name": "Mime-Version",
+                            "value": "1.0"
+                        },
+                        {
+                            "name": "Subject",
+                            "value": "Example"
+                        },
+                        {
+                            "name": "From",
+                            "value": "Someone Else <someone.else@example.com>"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "text/html; charset=\"utf-8\""
+                        },
+                        {
+                            "name": "Content-Transfer-Encoding",
+                            "value": "quoted-printable"
+                        }
+                    ],
+                    "commonHeaders": {
+                        "from": [
+                            "Someone Else <someone.else@example.com>"
+                        ],
+                        "date": "Sun, 13 Jul 2025 08:04:23 -0700 (PDT)",
+                        "to": [
+                            "Someone <someone@example.com>"
+                        ],
+                        "subject": "Example"
+                    }
+                },
+                "receipt": {
+                    "timestamp": "2025-07-13T15:04:28.356Z",
+                    "processingTimeMillis": 1597,
+                    "recipients": [
+                        "someone@ses.example.com"
+                    ],
+                    "spamVerdict": {
+                        "status": "PASS"
+                    },
+                    "virusVerdict": {
+                        "status": "PASS"
+                    },
+                    "spfVerdict": {
+                        "status": "GRAY"
+                    },
+                    "dkimVerdict": {
+                        "status": "PASS"
+                    },
+                    "dmarcVerdict": {
+                        "status": "PASS"
+                    },
+                    "action": {
+                        "type": "Lambda",
+                        "functionArn": "arn:aws:lambda:eu-central-1:000000000000:function:someLambda",
+                        "invocationType": "Event"
+                    }
+                }
+            }
+        }
+    ]
+}
