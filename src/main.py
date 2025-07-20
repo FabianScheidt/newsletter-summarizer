@@ -1,16 +1,32 @@
 import asyncio
 import email
+import os
 from email import policy
 import json
 from typing import Dict, Any
 
+from aiobotocore.client import AioBaseClient
+from aiobotocore.session import get_session
 from bs4 import BeautifulSoup, Tag
 
+session = get_session()
+bucket = os.environ["NEWSLETTER_SUMMARIZER_BUCKET"]
 
-async def fetch_email(message_id: str) -> bytes:
-    # Todo: Replace with actual implementation to fetch from S3
-    with open("../sample-data/emails/" + message_id, "rb") as f:
-        return f.read()
+
+async def fetch_raw_email(s3: AioBaseClient, message_id: str) -> bytes:
+    key = "emails/raw/" + message_id
+    res = await s3.get_object(Bucket=bucket, Key=key)
+    return await res["Body"].read()
+
+
+async def store_html_input(s3: AioBaseClient, message_id: str, html: str) -> None:
+    key = f"emails/html-input/{message_id}.html"
+    await s3.put_object(Bucket=bucket, Key=key, Body=html)
+
+
+async def store_html_output(s3: AioBaseClient, message_id: str, html: str) -> None:
+    key = f"emails/html-output/{message_id}.html"
+    await s3.put_object(Bucket=bucket, Key=key, Body=html)
 
 
 def extract_html_from_email(email_bytes: bytes) -> str:
@@ -47,20 +63,23 @@ async def process_wrapper(wrapper: Tag) -> None:
 
 
 async def process_email(message_id: str) -> None:
-    # Extract HTML from email
-    email_bytes = await fetch_email(message_id)
-    html = extract_html_from_email(email_bytes)
+    async with session.create_client("s3") as s3:
+        # Extract HTML from email
+        email_bytes = await fetch_raw_email(s3, message_id)
+        html = extract_html_from_email(email_bytes)
+        await store_html_input(s3, message_id, html)
 
-    # Process the HTML
-    soup = BeautifulSoup(html, "html.parser")
-    wrappers = [el.parent.parent for el in soup.find_all("mj-text")]
-    update_tasks = [process_wrapper(el) for el in wrappers]
-    await asyncio.gather(*update_tasks)
-    updated_html = str(soup)
+        # Process the HTML
+        soup = BeautifulSoup(html, "html.parser")
+        wrappers = [el.parent.parent for el in soup.find_all("mj-text")]
+        update_tasks = [process_wrapper(el) for el in wrappers]
+        await asyncio.gather(*update_tasks)
+        updated_html = str(soup)
+        await store_html_output(s3, message_id, updated_html)
 
-    # Send a message containing the result
-    # Todo...
-    print(updated_html)
+        # Send a message containing the result
+        # Todo...
+        print(updated_html)
 
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:

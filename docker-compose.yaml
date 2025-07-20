@@ -1,0 +1,10 @@
+services:
+    localstack:
+        image: localstack/localstack
+        ports:
+            - '4566:4566'
+        environment:
+            - SERVICES=s3
+        volumes:
+            - './sample-data/create-bucket.sh:/etc/localstack/init/ready.d/create-bucket.sh'
+            - './sample-data/emails:/data/emails'
