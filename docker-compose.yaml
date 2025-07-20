@@ -4,7 +4,10 @@ services:
         ports:
             - '4566:4566'
         environment:
-            - SERVICES=s3
+            SERVICES: s3,ses
+            NEWSLETTER_SUMMARIZER_BUCKET: ${NEWSLETTER_SUMMARIZER_BUCKET}
+            NEWSLETTER_SUMMARIZER_SENDER: ${NEWSLETTER_SUMMARIZER_SENDER}
         volumes:
             - './sample-data/create-bucket.sh:/etc/localstack/init/ready.d/create-bucket.sh'
+            - './sample-data/init-ses.sh:/etc/localstack/init/ready.d/init-ses.sh'
             - './sample-data/emails:/data/emails'

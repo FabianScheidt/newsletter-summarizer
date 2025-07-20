@@ -12,9 +12,14 @@ from newsletter_summarizer.s3 import (
     store_article_text,
     store_article_html,
 )
-from newsletter_summarizer.processing import extract_html_from_email, process_html
+from newsletter_summarizer.processing import (
+    extract_html_from_email,
+    process_html,
+    extract_subject_from_email,
+)
 from newsletter_summarizer.crawling import fetch_html, login
 from newsletter_summarizer.extraction import extract_article
+from newsletter_summarizer.submission import submit_result
 
 session = get_session()
 
@@ -23,6 +28,7 @@ async def process_email(message_id: str) -> None:
     async with session.create_client("s3") as s3:
         # Extract HTML from email
         email_bytes = await fetch_raw_email(s3, message_id)
+        subject = extract_subject_from_email(email_bytes)
         html = extract_html_from_email(email_bytes)
         await store_html_input(s3, message_id, html)
 
@@ -41,9 +47,9 @@ async def process_email(message_id: str) -> None:
         updated_html = await process_html(html, fetch_summary)
         await store_html_output(s3, message_id, updated_html)
 
-    # Send a message containing the result
-    # Todo...
-    print(updated_html)
+    async with session.create_client("ses") as ses:
+        # Send a message containing the result
+        await submit_result(ses, subject, updated_html)
 
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:
