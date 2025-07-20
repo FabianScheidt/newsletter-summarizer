@@ -18,12 +18,16 @@ from newsletter_summarizer.processing import (
 from newsletter_summarizer.crawling import fetch_html, login
 from newsletter_summarizer.extraction import extract_article
 from newsletter_summarizer.submission import submit_result
+from newsletter_summarizer.summary import summarize
 
 session = get_session()
 
 
 async def process_email(message_id: str) -> None:
-    async with session.create_client("s3") as s3:
+    async with (
+        session.create_client("s3") as s3,
+        session.create_client("bedrock-runtime") as bedrock,
+    ):
         # Extract HTML from email
         email_bytes = await fetch_raw_email(s3, message_id)
         subject = extract_subject_from_email(email_bytes)
@@ -38,7 +42,9 @@ async def process_email(message_id: str) -> None:
             await store_article_html(s3, extracted_article["id"], fetched_html)
             await store_article_text(s3, extracted_article["id"], extracted_article)
 
-            return extracted_article["text"]
+            summary = await summarize(bedrock, extracted_article["text"])
+
+            return summary
 
         # Initiate the crawler and process the HTML
         await login()
