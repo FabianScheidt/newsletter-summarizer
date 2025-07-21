@@ -66,4 +66,8 @@ async def process_email(message_id: str) -> None:
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:
     message_id = event["Records"][0]["ses"]["mail"]["messageId"]
-    asyncio.run(process_email(message_id))
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.run_until_complete(process_email(message_id))
