@@ -10,6 +10,7 @@ from newsletter_summarizer.s3 import (
     store_html_output,
     store_article_text,
     store_article_html,
+    store_article_summary,
 )
 from newsletter_summarizer.processing import (
     extract_sender_from_email,
@@ -50,7 +51,8 @@ async def process_email(message_id: str) -> None:
             await store_article_html(s3, extracted_article["id"], fetched_html)
             await store_article_text(s3, extracted_article["id"], extracted_article)
 
-            summary = await summarize(bedrock, extracted_article["text"])
+            summary, summary_log = await summarize(bedrock, extracted_article["text"])
+            await store_article_summary(s3, extracted_article["id"], summary_log)
 
             return summary
 

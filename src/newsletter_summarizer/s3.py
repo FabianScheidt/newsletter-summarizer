@@ -4,6 +4,7 @@ import os
 from aiobotocore.client import AioBaseClient
 
 from newsletter_summarizer.extraction import ExtractedArticle
+from newsletter_summarizer.summary import SummaryLog
 
 bucket = os.environ["NEWSLETTER_SUMMARIZER_BUCKET"]
 
@@ -34,4 +35,12 @@ async def store_article_text(
 ) -> None:
     key = f"articles/text/{article_id}.json"
     body = json.dumps(extracted_article, indent=4)
+    await s3.put_object(Bucket=bucket, Key=key, Body=body)
+
+
+async def store_article_summary(
+    s3: AioBaseClient, article_id: str, summary_log: SummaryLog
+) -> None:
+    key = f"articles/summary/{article_id}.json"
+    body = json.dumps(summary_log, indent=4)
     await s3.put_object(Bucket=bucket, Key=key, Body=body)
