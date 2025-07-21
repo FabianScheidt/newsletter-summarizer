@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Dict, Any
 
 from aiobotocore.session import get_session
@@ -20,15 +21,19 @@ from newsletter_summarizer.extraction import extract_article
 from newsletter_summarizer.submission import submit_result
 from newsletter_summarizer.summary import summarize
 
+logger = logging.getLogger(__name__)
 session = get_session()
 
 
 async def process_email(message_id: str) -> None:
+    logger.info(f"Processing email {message_id}...")
+
     async with (
         session.create_client("s3") as s3,
         session.create_client("bedrock-runtime") as bedrock,
     ):
         # Extract HTML from email
+        logger.info(f"Extracting content {message_id}...")
         email_bytes = await fetch_raw_email(s3, message_id)
         subject = extract_subject_from_email(email_bytes)
         html = extract_html_from_email(email_bytes)
@@ -36,6 +41,7 @@ async def process_email(message_id: str) -> None:
 
         # Define handling for processing articles
         async def fetch_summary(link: str) -> str:
+            logger.info(f"Processing {link}...")
             fetched_html = await fetch_html(link)
             extracted_article = extract_article(fetched_html)
 
@@ -47,7 +53,9 @@ async def process_email(message_id: str) -> None:
             return summary
 
         # Initiate the crawler and process the HTML
+        logger.info(f"Logging in {message_id}...")
         await login()
+        logger.info(f"Processing HTML {message_id}...")
         updated_html = await process_html(html, fetch_summary)
         await store_html_output(s3, message_id, updated_html)
 
