@@ -29,11 +29,10 @@ async def process_wrapper(
     wrapper: Tag, fetch_summary: Callable[[str], Awaitable[str]]
 ) -> None:
     # Find content column
-    assert wrapper.name == "tr", "Expected wrapping element to be a table row."
-    children = wrapper.find_all("td")
-    assert len(children) == 3, "Expected wrapping element to contain three columns."
-    content_col = children[2]
-    content_wrapper = content_col.find("div")
+    content_before = [c for c in wrapper.children if str(c).strip() == "TITLE"]
+    assert len(content_before) == 1, "Expected exactly one title comment"
+    content_wrapper = content_before[0].find_next_sibling()
+    assert content_wrapper.name == "div", "Expected content wrapper to be a div."
 
     # Fetch Summary based on contained link
     link = content_wrapper.find("a").get("href")
@@ -47,7 +46,7 @@ async def process_html(
     html: str, fetch_summary: Callable[[str], Awaitable[str]]
 ) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    wrappers = [el.parent.parent for el in soup.find_all("mj-text")]
+    wrappers = [el.parent for el in soup.find_all("mj-text")]
     update_tasks = [process_wrapper(el, fetch_summary) for el in wrappers]
     await asyncio.gather(*update_tasks)
     return str(soup)
