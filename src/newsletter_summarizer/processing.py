@@ -7,6 +7,11 @@ from collections.abc import Callable
 from bs4 import Tag, BeautifulSoup
 
 
+def extract_sender_from_email(email_bytes: bytes) -> str:
+    msg = email.message_from_bytes(email_bytes, policy=policy.default)
+    return msg.get("From")
+
+
 def extract_subject_from_email(email_bytes: bytes) -> str:
     msg = email.message_from_bytes(email_bytes, policy=policy.default)
     return msg.get("Subject")

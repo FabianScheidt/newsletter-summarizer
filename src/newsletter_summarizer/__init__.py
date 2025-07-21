@@ -12,6 +12,7 @@ from newsletter_summarizer.s3 import (
     store_article_html,
 )
 from newsletter_summarizer.processing import (
+    extract_sender_from_email,
     extract_html_from_email,
     process_html,
     extract_subject_from_email,
@@ -35,6 +36,7 @@ async def process_email(message_id: str) -> None:
         # Extract HTML from email
         logger.info(f"Extracting content {message_id}...")
         email_bytes = await fetch_raw_email(s3, message_id)
+        sender = extract_sender_from_email(email_bytes)
         subject = extract_subject_from_email(email_bytes)
         html = extract_html_from_email(email_bytes)
         await store_html_input(s3, message_id, html)
@@ -61,7 +63,7 @@ async def process_email(message_id: str) -> None:
 
     async with session.create_client("ses") as ses:
         # Send a message containing the result
-        await submit_result(ses, subject, updated_html)
+        await submit_result(ses, sender, subject, updated_html)
 
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:
