@@ -51,7 +51,8 @@ async def process_email(message_id: str) -> None:
             await store_article_html(s3, extracted_article["id"], fetched_html)
             await store_article_text(s3, extracted_article["id"], extracted_article)
 
-            summary, summary_log = await summarize(bedrock, extracted_article["text"])
+            text = extracted_article["text"] or extracted_article["description"]
+            summary, summary_log = await summarize(bedrock, text)
             await store_article_summary(s3, extracted_article["id"], summary_log)
 
             return summary
