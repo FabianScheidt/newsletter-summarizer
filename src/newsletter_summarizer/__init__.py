@@ -43,8 +43,8 @@ async def process_email(message_id: str) -> None:
         await store_html_input(s3, message_id, html)
 
         # Define handling for processing articles
-        async def fetch_summary(link: str) -> str:
-            logger.info(f"Processing {link}...")
+        async def fetch_summary(i: int, link: str) -> str:
+            logger.info(f"Processing article with index {i} at {link}...")
             fetched_html = await fetch_html(link)
             extracted_article = extract_article(fetched_html)
 
@@ -70,6 +70,7 @@ async def process_email(message_id: str) -> None:
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:
     message_id = event["Records"][0]["ses"]["mail"]["messageId"]
+    logger.info(f"Processing message {message_id}...")
     loop = asyncio.get_event_loop()
     if loop.is_closed():
         loop = asyncio.new_event_loop()

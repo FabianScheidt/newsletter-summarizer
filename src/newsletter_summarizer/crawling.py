@@ -1,9 +1,10 @@
+import logging
 import os
 from typing import Tuple
 from urllib.parse import parse_qs
 
 import httpx
-from httpx import URL
+from httpx import URL, Response
 
 USER_AGENT = os.environ["NEWSLETTER_SUMMARIZER_USER_AGENT"]
 INITIAL_LOGIN_URL = os.environ["NEWSLETTER_SUMMARIZER_INITIAL_LOGIN_URL"]
@@ -12,6 +13,7 @@ REDIRECT_URI = os.environ["NEWSLETTER_SUMMARIZER_REDIRECT_URI"]
 USERNAME = os.environ["NEWSLETTER_SUMMARIZER_USERNAME"]
 PASSWORD = os.environ["NEWSLETTER_SUMMARIZER_PASSWORD"]
 
+logger = logging.getLogger(__name__)
 client = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
 
 
@@ -27,12 +29,13 @@ async def obtain_login_url() -> Tuple[URL, str]:
         follow_redirects=True,
     )
 
-    login_url = res.url
-    assert (
-        login_url != INITIAL_LOGIN_URL
-    ), "Expected initial url to redirect to a different one for login."
+    # Todo: This seems to be failing sometimes
+    if not res.is_success or res.url == INITIAL_LOGIN_URL:
+        _log_response(res, "Login URL Response")
+        raise AssertionError("Expected login to redirect.")
 
-    parsed_query = parse_qs(res.url.query.decode("utf8"))
+    login_url = res.url
+    parsed_query = parse_qs(login_url.query.decode("utf8"))
     assert "state" in parsed_query, "Expected login url to contain a state"
     login_state = parsed_query["state"][0]
 
@@ -52,11 +55,21 @@ async def login() -> None:
         },
         follow_redirects=True,
     )
-    assert res.is_success
-    assert res.url != login_url, "Expected login to redirect."
+
+    # Todo: This seems to be failing sometimes
+    if not res.is_success or res.url == login_url:
+        _log_response(res, "Login Response")
+        raise AssertionError("Expected login to redirect.")
 
     global logged_in
     logged_in = True
+
+
+def _log_response(res: Response, response_name: str = "Response") -> None:
+    logger.info("%s Status: %s", response_name, res.status_code)
+    logger.info("%s URL: %s", response_name, res.url)
+    logger.info("%s Headers: %s", response_name, res.headers)
+    logger.info("%s Payload: %s", response_name, res.text)
 
 
 async def fetch_html(url: str) -> str:

@@ -31,7 +31,7 @@ def extract_html_from_email(email_bytes: bytes) -> str:
 
 
 async def process_wrapper(
-    wrapper: Tag, fetch_summary: Callable[[str], Awaitable[str]]
+    i: int, wrapper: Tag, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> None:
     # Find content column
     content_before = [c for c in wrapper.children if str(c).strip() == "TITLE"]
@@ -41,17 +41,19 @@ async def process_wrapper(
 
     # Fetch Summary based on contained link
     link = content_wrapper.find("a").get("href")
-    summary = await fetch_summary(link)
+    summary = await fetch_summary(i, link)
 
     # Append the summary
     content_wrapper.append(BeautifulSoup(f"<p>{summary}</p>", "html.parser"))
 
 
 async def process_html(
-    html: str, fetch_summary: Callable[[str], Awaitable[str]]
+    html: str, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> str:
     soup = BeautifulSoup(html, "html.parser")
     wrappers = [el.parent for el in soup.find_all("mj-text")]
-    update_tasks = [process_wrapper(el, fetch_summary) for el in wrappers]
+    update_tasks = [
+        process_wrapper(i, el, fetch_summary) for i, el in enumerate(wrappers)
+    ]
     await asyncio.gather(*update_tasks)
     return str(soup)
