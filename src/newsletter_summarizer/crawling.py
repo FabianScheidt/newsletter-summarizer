@@ -1,10 +1,9 @@
 import logging
 import os
-from typing import Tuple
 from urllib.parse import parse_qs
 
 import httpx
-from httpx import URL, Response
+from httpx import URL
 
 USER_AGENT = os.environ["NEWSLETTER_SUMMARIZER_USER_AGENT"]
 INITIAL_LOGIN_URL = os.environ["NEWSLETTER_SUMMARIZER_INITIAL_LOGIN_URL"]
@@ -17,8 +16,9 @@ logger = logging.getLogger(__name__)
 client = httpx.AsyncClient(headers={"User-Agent": USER_AGENT})
 
 
-async def obtain_login_url() -> Tuple[URL, str]:
-    res = await client.get(
+async def login() -> None:
+    logger.info("Obtaining login URL...")
+    url_res = await client.get(
         INITIAL_LOGIN_URL,
         params={
             "response_type": "code",
@@ -29,22 +29,18 @@ async def obtain_login_url() -> Tuple[URL, str]:
         follow_redirects=True,
     )
 
-    # Todo: This seems to be failing sometimes
-    if not res.is_success or res.url == INITIAL_LOGIN_URL:
-        _log_response(res, "Login URL Response")
-        raise AssertionError("Expected login to redirect.")
+    assert url_res.is_success, f"Expected login url request to be successful, got status code { url_res.status_code }."
 
-    login_url = res.url
+    if _contains_redirect_uri(url_res):
+        logger.info("Already logged in.")
+        return
+
+    login_url = url_res.url
     parsed_query = parse_qs(login_url.query.decode("utf8"))
     assert "state" in parsed_query, "Expected login url to contain a state"
     login_state = parsed_query["state"][0]
 
-    return login_url, login_state
-
-
-async def login() -> None:
-    login_url, login_state = await obtain_login_url()
-
+    logger.info("Logging in...")
     res = await client.post(
         login_url,
         data={
@@ -56,24 +52,21 @@ async def login() -> None:
         follow_redirects=True,
     )
 
-    # Todo: This seems to be failing sometimes
-    if not res.is_success or res.url == login_url:
-        _log_response(res, "Login Response")
-        raise AssertionError("Expected login to redirect.")
-
-    global logged_in
-    logged_in = True
+    assert (
+        res.is_success
+    ), f"Expected login request to be successful. Got status code { res.status_code }."
+    assert _contains_redirect_uri(res)
+    logger.info("Login successful.")
 
 
-def _log_response(res: Response, response_name: str = "Response") -> None:
-    logger.info("%s Status: %s", response_name, res.status_code)
-    logger.info("%s URL: %s", response_name, res.url)
-    logger.info("%s Headers: %s", response_name, res.headers)
-    logger.info("%s Payload: %s", response_name, res.text)
+def _contains_redirect_uri(response: httpx.Response) -> bool:
+    for el in response.history:
+        if el.url.copy_with(params={}) == URL(REDIRECT_URI):
+            return True
+    return False
 
 
 async def fetch_html(url: str) -> str:
-    assert logged_in, "You need to call login() first."
     res = await client.get(url, follow_redirects=True)
     assert res.is_success
     return res.text

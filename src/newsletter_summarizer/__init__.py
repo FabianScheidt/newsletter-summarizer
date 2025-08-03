@@ -66,7 +66,10 @@ async def process_email(message_id: str) -> None:
 
     async with session.create_client("ses") as ses:
         # Send a message containing the result
+        logger.info("Sending updated email...")
         await submit_result(ses, sender, subject, updated_html)
+
+    logger.info("Done!")
 
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> None:
