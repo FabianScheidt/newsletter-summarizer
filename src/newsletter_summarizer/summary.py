@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 session = get_session()
 
-MODEL_ID = os.environ["NEWSLETTER_SUMMARIZER_MODEL_ID"]
+MODEL_ID = os.environ["NEWSLETTER_SUMMARIZER_BEDROCK_MODEL_ID"]
 SYSTEM_PROMPT = os.environ["NEWSLETTER_SUMMARIZER_SYSTEM_PROMPT"]
 
 

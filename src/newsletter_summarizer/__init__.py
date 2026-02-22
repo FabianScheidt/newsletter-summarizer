@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import Dict, Any
 
 from aiobotocore.session import get_session
@@ -32,7 +33,10 @@ async def process_email(message_id: str) -> None:
 
     async with (
         session.create_client("s3") as s3,
-        session.create_client("bedrock-runtime") as bedrock,
+        session.create_client(
+            "bedrock-runtime",
+            region_name=os.environ.get("NEWSLETTER_SUMMARIZER_BEDROCK_REGION"),
+        ) as bedrock,
     ):
         # Extract HTML from email
         logger.info(f"Extracting content {message_id}...")
@@ -52,6 +56,9 @@ async def process_email(message_id: str) -> None:
             await store_article_text(s3, extracted_article["id"], extracted_article)
 
             text = extracted_article["text"] or extracted_article["description"]
+            logger.info(
+                f"Fetching summary for article with index {i}: {extracted_article["title"]}"
+            )
             summary, summary_log = await summarize(bedrock, text)
             await store_article_summary(s3, extracted_article["id"], summary_log)
 
