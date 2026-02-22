@@ -4,7 +4,7 @@ from email import policy
 from typing import Awaitable
 from collections.abc import Callable
 
-from bs4 import Tag, BeautifulSoup
+from bs4 import BeautifulSoup, PageElement, Comment, Tag
 
 
 def extract_sender_from_email(email_bytes: bytes) -> str:
@@ -31,14 +31,8 @@ def extract_html_from_email(email_bytes: bytes) -> str:
 
 
 async def process_wrapper(
-    i: int, wrapper: Tag, fetch_summary: Callable[[int, str], Awaitable[str]]
+    i: int, content_wrapper: Tag, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> None:
-    # Find content column
-    content_before = [c for c in wrapper.children if str(c).strip() == "TITLE"]
-    assert len(content_before) == 1, "Expected exactly one title comment"
-    content_wrapper = content_before[0].find_next_sibling()
-    assert content_wrapper.name == "div", "Expected content wrapper to be a div."
-
     # Fetch Summary based on contained link
     link = content_wrapper.find("a").get("href")
     summary = await fetch_summary(i, link)
@@ -47,11 +41,19 @@ async def process_wrapper(
     content_wrapper.append(BeautifulSoup(f"<p>{summary}</p>", "html.parser"))
 
 
+def _is_title_marker(el: str | PageElement) -> bool:
+    return (
+        isinstance(el, Comment)
+        and el.strip() == "TITLE"
+        and el.find_next_sibling().name == "div"
+    )
+
+
 async def process_html(
     html: str, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    wrappers = [el.parent for el in soup.find_all("mj-text")]
+    wrappers = [el.find_next_sibling() for el in soup.find_all(string=_is_title_marker)]
     update_tasks = [
         process_wrapper(i, el, fetch_summary) for i, el in enumerate(wrappers)
     ]
