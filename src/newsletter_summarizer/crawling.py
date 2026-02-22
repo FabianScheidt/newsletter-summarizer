@@ -29,7 +29,7 @@ async def login() -> None:
         follow_redirects=True,
     )
 
-    assert url_res.is_success, f"Expected login url request to be successful, got status code { url_res.status_code }."
+    assert url_res.is_success, f"Expected login url request to be successful, got status code { url_res.status_code }: { url_res.text }"
 
     if _contains_redirect_uri(url_res):
         logger.info("Already logged in.")
@@ -52,9 +52,7 @@ async def login() -> None:
         follow_redirects=True,
     )
 
-    assert (
-        res.is_success
-    ), f"Expected login request to be successful. Got status code { res.status_code }."
+    assert res.is_success, f"Expected login request to be successful. Got status code { res.status_code }: { res.text }"
     assert _contains_redirect_uri(res)
     logger.info("Login successful.")
 
@@ -68,5 +66,5 @@ def _contains_redirect_uri(response: httpx.Response) -> bool:
 
 async def fetch_html(url: str) -> str:
     res = await client.get(url, follow_redirects=True)
-    assert res.is_success
+    assert res.is_success, f"Expected fetch to be successful, got status code { res.status_code }: { res.text }"
     return res.text
