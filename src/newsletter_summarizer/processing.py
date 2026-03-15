@@ -4,7 +4,7 @@ from email import policy
 from typing import Awaitable
 from collections.abc import Callable
 
-from bs4 import BeautifulSoup, PageElement, Comment, Tag
+from bs4 import BeautifulSoup, Tag
 
 
 def extract_sender_from_email(email_bytes: bytes) -> str:
@@ -31,9 +31,10 @@ def extract_html_from_email(email_bytes: bytes) -> str:
 
 
 async def process_wrapper(
-    i: int, content_wrapper: Tag, fetch_summary: Callable[[int, str], Awaitable[str]]
+    i: int, article_wrapper: Tag, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> None:
     # Fetch Summary based on contained link
+    content_wrapper = article_wrapper.find_all("td")[2]
     link = content_wrapper.find("a").get("href")
     summary = await fetch_summary(i, link)
 
@@ -41,11 +42,17 @@ async def process_wrapper(
     content_wrapper.append(BeautifulSoup(f"<p>{summary}</p>", "html.parser"))
 
 
-def _is_title_marker(el: str | PageElement) -> bool:
+def _is_article_wrapper(el: Tag) -> bool:
+    if el.name != "tr":
+        return False
+    tds = el.find_all("td")
+    if len(tds) != 3:
+        return False
+    img_td, spacer_td, title_td = tds
     return (
-        isinstance(el, Comment)
-        and el.strip() == "TITLE"
-        and el.find_next_sibling().name == "div"
+        img_td.find("img") is not None
+        and spacer_td.attrs.get("width") is not None
+        and title_td.find("a") is not None
     )
 
 
@@ -53,7 +60,7 @@ async def process_html(
     html: str, fetch_summary: Callable[[int, str], Awaitable[str]]
 ) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    wrappers = [el.find_next_sibling() for el in soup.find_all(string=_is_title_marker)]
+    wrappers = soup.find_all(_is_article_wrapper)
     update_tasks = [
         process_wrapper(i, el, fetch_summary) for i, el in enumerate(wrappers)
     ]
